@@ -1,0 +1,59 @@
+{
+  "bronze_crawler": {
+    "name": "tpcds-bronze-crawler",
+    "database": "tpcds_datalake_dev",
+    "s3_path": "s3://YOUR_BUCKET/bronze/",
+    "table_prefix": "bronze_",
+    "schedule": "cron(0 3 * * ? *)",
+    "schema_change_policy": {
+      "update_behavior": "UPDATE_IN_DATABASE",
+      "delete_behavior": "LOG"
+    },
+    "configuration": {
+      "Version": 1.0,
+      "CrawlerOutput": {
+        "Partitions": {
+          "AddOrUpdateBehavior": "InheritFromTable"
+        }
+      }
+    }
+  },
+  "silver_crawler": {
+    "name": "tpcds-silver-crawler",
+    "database": "tpcds_datalake_dev",
+    "s3_path": "s3://YOUR_BUCKET/silver/",
+    "table_prefix": "silver_",
+    "schedule": "cron(0 5 * * ? *)",
+    "schema_change_policy": {
+      "update_behavior": "UPDATE_IN_DATABASE",
+      "delete_behavior": "LOG"
+    },
+    "configuration": {
+      "Version": 1.0,
+      "CrawlerOutput": {
+        "Partitions": {
+          "AddOrUpdateBehavior": "InheritFromTable"
+        }
+      }
+    }
+  },
+  "gold_crawler": {
+    "name": "tpcds-gold-crawler",
+    "database": "tpcds_datalake_dev",
+    "s3_path": "s3://YOUR_BUCKET/gold/",
+    "table_prefix": "gold_",
+    "schedule": "cron(0 7 * * ? *)",
+    "schema_change_policy": {
+      "update_behavior": "UPDATE_IN_DATABASE",
+      "delete_behavior": "LOG"
+    },
+    "configuration": {
+      "Version": 1.0,
+      "CrawlerOutput": {
+        "Partitions": {
+          "AddOrUpdateBehavior": "InheritFromTable"
+        }
+      }
+    }
+  }
+}

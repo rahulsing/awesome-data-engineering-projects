@@ -1,0 +1,60 @@
+{
+  "bronze_ingestion": {
+    "job_name": "tpcds-bronze-ingestion",
+    "script_location": "s3://YOUR_BUCKET/scripts/bronze_ingestion.py",
+    "role": "YOUR_GLUE_ROLE_ARN",
+    "glue_version": "4.0",
+    "worker_type": "G.1X",
+    "number_of_workers": 10,
+    "max_retries": 1,
+    "timeout": 2880,
+    "default_arguments": {
+      "--job-language": "python",
+      "--enable-metrics": "true",
+      "--enable-spark-ui": "true",
+      "--enable-continuous-cloudwatch-log": "true",
+      "--enable-glue-datacatalog": "true",
+      "--TARGET_BUCKET": "s3://YOUR_BUCKET",
+      "--TABLE_NAME": "ALL"
+    }
+  },
+  "silver_transformation": {
+    "job_name": "tpcds-silver-transformation",
+    "script_location": "s3://YOUR_BUCKET/scripts/silver_transformation.py",
+    "role": "YOUR_GLUE_ROLE_ARN",
+    "glue_version": "4.0",
+    "worker_type": "G.2X",
+    "number_of_workers": 20,
+    "max_retries": 1,
+    "timeout": 2880,
+    "default_arguments": {
+      "--job-language": "python",
+      "--enable-metrics": "true",
+      "--enable-spark-ui": "true",
+      "--enable-continuous-cloudwatch-log": "true",
+      "--enable-glue-datacatalog": "true",
+      "--DATABASE_NAME": "tpcds_datalake_dev",
+      "--TARGET_BUCKET": "s3://YOUR_BUCKET",
+      "--TABLE_NAME": "store_sales"
+    }
+  },
+  "gold_aggregation": {
+    "job_name": "tpcds-gold-aggregation",
+    "script_location": "s3://YOUR_BUCKET/scripts/gold_aggregation.py",
+    "role": "YOUR_GLUE_ROLE_ARN",
+    "glue_version": "4.0",
+    "worker_type": "G.2X",
+    "number_of_workers": 15,
+    "max_retries": 1,
+    "timeout": 2880,
+    "default_arguments": {
+      "--job-language": "python",
+      "--enable-metrics": "true",
+      "--enable-spark-ui": "true",
+      "--enable-continuous-cloudwatch-log": "true",
+      "--enable-glue-datacatalog": "true",
+      "--DATABASE_NAME": "tpcds_datalake_dev",
+      "--TARGET_BUCKET": "s3://YOUR_BUCKET"
+    }
+  }
+}
