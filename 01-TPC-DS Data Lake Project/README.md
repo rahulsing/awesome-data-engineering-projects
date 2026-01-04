@@ -2,6 +2,8 @@
 
 A production-ready data lake implementation using the Medallion architecture (Bronze, Silver, Gold) with AWS services to process and analyze TPC-DS benchmark data.
 
+> **⚠️ COST NOTICE**: Running this project in your AWS account will incur costs (S3 storage, Glue jobs, Athena queries). Estimated costs: $200+ depending on data volume and usage. If you want to understand the project without incurring costs, review the comprehensive documentation in the `docs/` folder which covers architecture, deployment steps, and usage examples.
+
 ## Architecture Overview
 
 - **Bronze Layer**: Raw data ingestion from TPC-DS dataset
@@ -180,9 +182,54 @@ chmod +x scripts/deploy.sh
 
 ### 2. Run ETL Pipeline
 
+**Option A: Automated Script**
 ```bash
 chmod +x scripts/run-pipeline.sh
 ./scripts/run-pipeline.sh
+```
+
+**Option B: Manual Execution**
+
+Start Bronze ingestion:
+```bash
+aws glue start-job-run \
+  --job-name tpcds-datalake-bronze-ingestion-dev \
+  --region us-east-1
+```
+
+Monitor job progress:
+```bash
+aws glue get-job-runs \
+  --job-name tpcds-datalake-bronze-ingestion-dev \
+  --region us-east-1
+```
+
+Run crawlers and subsequent jobs:
+```bash
+# Catalog Bronze data
+aws glue start-crawler \
+  --name tpcds-datalake-bronze-crawler-dev \
+  --region us-east-1
+
+# Wait for crawler to complete, then run Silver transformation
+aws glue start-job-run \
+  --job-name tpcds-datalake-silver-transformation-dev \
+  --region us-east-1
+
+# Catalog Silver data
+aws glue start-crawler \
+  --name tpcds-datalake-silver-crawler-dev \
+  --region us-east-1
+
+# Run Gold aggregation
+aws glue start-job-run \
+  --job-name tpcds-datalake-gold-aggregation-dev \
+  --region us-east-1
+
+# Catalog Gold data
+aws glue start-crawler \
+  --name tpcds-datalake-gold-crawler-dev \
+  --region us-east-1
 ```
 
 This will execute:
@@ -192,19 +239,42 @@ This will execute:
 
 ### 3. Query Data with Athena
 
+Once crawlers complete, query your data:
+
 ```sql
--- View available tables
+-- Check available tables
 SHOW TABLES IN tpcds_datalake_dev;
 
--- Query gold layer
+-- Query Bronze layer
+SELECT COUNT(*) FROM bronze_store_sales;
+
+-- Query Silver layer
 SELECT 
-    d_year,
-    d_month,
-    SUM(total_sales) as monthly_revenue
+    year,
+    month,
+    COUNT(*) as transaction_count,
+    SUM(ss_sales_price) as total_sales
+FROM silver_store_sales
+GROUP BY year, month
+ORDER BY year, month;
+
+-- Query Gold layer
+SELECT 
+    d_date,
+    total_sales,
+    transaction_count,
+    unique_customers
 FROM gold_daily_sales_summary
-GROUP BY d_year, d_month
-ORDER BY d_year, d_month;
+ORDER BY d_date DESC
+LIMIT 30;
 ```
+
+### 4. Access AWS Console
+
+- **S3 Bucket**: https://s3.console.aws.amazon.com/s3/buckets/
+- **Glue Database**: https://console.aws.amazon.com/glue/home?region=us-east-1#/v2/data-catalog/databases
+- **Glue Jobs**: https://console.aws.amazon.com/glue/home?region=us-east-1#/v2/etl-jobs
+- **Athena Console**: https://console.aws.amazon.com/athena/home?region=us-east-1
 
 ## Key Features
 
@@ -246,18 +316,55 @@ ORDER BY d_year, d_month;
 - Athena query performance and data scanned
 - S3 storage metrics
 
-### Logs
+### CloudWatch Logs
 - Glue job logs: `/aws-glue/jobs/output`
 - Crawler logs: `/aws-glue/crawlers`
 
+### Cost Considerations
+
+**Estimated Monthly Costs** (based on moderate usage):
+- S3 Storage: ~$23/TB/month
+- Glue ETL: ~$0.44/DPU-hour
+- Athena Queries: ~$5/TB scanned
+- Glue Crawlers: ~$0.44/DPU-hour
+
+**Cost Optimization Tips**:
+1. Use partitioning to reduce data scanned
+2. Compress data with Parquet format
+3. Set up S3 lifecycle policies
+4. Use Athena workgroup limits
+5. Monitor Glue job metrics and right-size DPUs
+
 ## Cleanup
 
-```bash
-# CloudFormation
-aws cloudformation delete-stack --stack-name tpcds-datalake-dev
+To avoid ongoing costs, delete resources when done:
 
-# Terraform
-cd infrastructure && terraform destroy
+**CloudFormation:**
+```bash
+# Empty S3 bucket first
+aws s3 rm s3://tpcds-datalake-dev-<account-id> --recursive
+
+# Delete stack
+aws cloudformation delete-stack --stack-name tpcds-datalake-dev --region us-east-1
+```
+
+**Terraform:**
+```bash
+cd infrastructure
+terraform destroy -var="project_name=tpcds-datalake" -var="environment=dev"
+```
+
+**Manual Cleanup (if needed):**
+```bash
+# Delete Glue jobs
+aws glue delete-job --job-name tpcds-datalake-bronze-ingestion-dev
+aws glue delete-job --job-name tpcds-datalake-silver-transformation-dev
+aws glue delete-job --job-name tpcds-datalake-gold-aggregation-dev
+
+# Delete crawlers
+aws glue delete-crawler --name tpcds-datalake-bronze-crawler-dev
+aws glue delete-crawler --name tpcds-datalake-silver-crawler-dev
+aws glue delete-crawler --name tpcds-datalake-gold-crawler-dev
 ```
 
 ## Technologies
